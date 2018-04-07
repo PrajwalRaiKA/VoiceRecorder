@@ -1,17 +1,17 @@
 package test.voicerecorder;
 
+import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
-
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-
-import android.os.Bundle;
 import android.view.View;
-
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -20,13 +20,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
-import static android.Manifest.permission.RECORD_AUDIO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-
-import android.support.v4.app.ActivityCompat;
-import android.content.pm.PackageManager;
-import android.support.v4.content.ContextCompat;
-
 import omrecorder.AudioChunk;
 import omrecorder.AudioRecordConfig;
 import omrecorder.OmRecorder;
@@ -34,10 +27,13 @@ import omrecorder.PullTransport;
 import omrecorder.PullableSource;
 import omrecorder.Recorder;
 
+import static android.Manifest.permission.RECORD_AUDIO;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+
 public class MainActivity extends AppCompatActivity {
 
     Button buttonStart, buttonStop, buttonPlayLastRecordAudio,
-            buttonStopPlayingRecording;
+            buttonStopPlayingRecording, pauseResumeButton;
     VisualizerView visualizerView;
     TextView amplitudeValue;
     String AudioSavePathInDevice = null;
@@ -49,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
     String RandomAudioFileName = "ABCDEFGHIJKLMNOP";
     public static final int RequestPermissionCode = 1;
     MediaPlayer mediaPlayer;
+    boolean isPaused = false;
 
     Recorder recorder;
-    private float maxPeakValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
         buttonStart = (Button) findViewById(R.id.button);
         buttonStop = (Button) findViewById(R.id.button2);
+        pauseResumeButton = findViewById(R.id.button_pause_resume);
         buttonPlayLastRecordAudio = (Button) findViewById(R.id.button3);
         buttonStopPlayingRecording = (Button) findViewById(R.id.button4);
 
@@ -81,28 +78,34 @@ public class MainActivity extends AppCompatActivity {
 
                 if (checkPermission()) {
                     recorder.startRecording();
-                    isRecording=true;
-                    handler.post(updateVisualizer);
-                }else{
+                    isRecording = true;
+                    pauseResumeButton.setEnabled(true);
+                    buttonStop.setEnabled(true);
+                    buttonStart.setEnabled(false);
+                    visualizerView.clear();
+                    buttonPlayLastRecordAudio.setEnabled(false);
+                    buttonStopPlayingRecording.setEnabled(false);
+                } else {
                     requestPermission();
                 }
 
-        }});
+            }
+        });
 
         buttonStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 try {
-                    isRecording=false;
+                    isRecording = false;
+                    buttonStop.setEnabled(false);
+                    buttonStart.setEnabled(true);
+                    pauseResumeButton.setEnabled(false);
                     recorder.stopRecording();
+                    setupRecorder();
+                    buttonPlayLastRecordAudio.setEnabled(true);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                buttonStart.post(new Runnable() {
-                    @Override public void run() {
-                        animateVoice(0);
-                    }
-                });
             }
         });
 
@@ -110,22 +113,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) throws IllegalArgumentException,
                     SecurityException, IllegalStateException {
-
                 buttonStop.setEnabled(false);
                 buttonStart.setEnabled(false);
                 buttonStopPlayingRecording.setEnabled(true);
-
                 mediaPlayer = new MediaPlayer();
                 try {
-                    mediaPlayer.setDataSource(AudioSavePathInDevice);
+                    mediaPlayer.setDataSource(Environment.getExternalStorageDirectory().toString().trim() + "/sample.wav");
                     mediaPlayer.prepare();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
                 mediaPlayer.start();
-                Toast.makeText(MainActivity.this, "Recording Playing",
-                        Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Recording Playing", Toast.LENGTH_LONG).show();
             }
         });
 
@@ -136,17 +135,37 @@ public class MainActivity extends AppCompatActivity {
                 buttonStart.setEnabled(true);
                 buttonStopPlayingRecording.setEnabled(false);
                 buttonPlayLastRecordAudio.setEnabled(true);
-
                 if (mediaPlayer != null) {
                     mediaPlayer.stop();
                     mediaPlayer.release();
-                    MediaRecorderReady();
+                    setupRecorder();
+                    visualizerView.clear();
                 }
             }
         });
 
+        pauseResumeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (recorder == null) {
+                    Toast.makeText(MainActivity.this, "Please start recording first!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                buttonPlayLastRecordAudio.setEnabled(false);
+                buttonStopPlayingRecording.setEnabled(false);
+                if (!isPaused) {
+                    pauseResumeButton.setText(getString(R.string.resume_recording));
+                    recorder.pauseRecording();
+                    isRecording = false;
+                } else {
+                    pauseResumeButton.setText(getString(R.string.pause_recording));
+                    recorder.resumeRecording();
+                    isRecording = true;
+                }
+                isPaused = !isPaused;
+            }
+        });
         handler = new Handler();
-
     }
 
     public void MediaRecorderReady() {
@@ -161,12 +180,12 @@ public class MainActivity extends AppCompatActivity {
     private void setupRecorder() {
         recorder = OmRecorder.wav(
                 new PullTransport.Default(mic(), new PullTransport.OnAudioChunkPulledListener() {
-                    @Override public void onAudioChunkPulled(AudioChunk audioChunk) {
+                    @Override
+                    public void onAudioChunkPulled(AudioChunk audioChunk) {
                         float maxPeak = (float) audioChunk.maxAmplitude() * 200;
                         visualizerView.addAmplitude(maxPeak);
                         visualizerView.invalidate();
-                        amplitudeValue.setText("maxPeakValue:"+maxPeak);
-//                        animateVoice((float) (audioChunk.maxAmplitude() / 200.0));
+                        amplitudeValue.setText("maxPeakValue:" + maxPeak);
                     }
                 }), file());
     }
@@ -219,35 +238,6 @@ public class MainActivity extends AppCompatActivity {
                 result1 == PackageManager.PERMISSION_GRANTED;
     }
 
-    // updates the visualizer every 50 milliseconds
-    Runnable updateVisualizer = new Runnable() {
-        @Override
-        public void run() {
-            if (isRecording) // if we are already recording
-            {
-                // get the current amplitude
-                if(maxPeakValue>0) {
-                    int x = (int) maxPeakValue;
-                    visualizerView.addAmplitude(x); // update the VisualizeView
-                    visualizerView.invalidate(); // refresh the VisualizerView
-
-                    // update in 40 milliseconds
-                    handler.postDelayed(this, REPEAT_INTERVAL);
-                }
-            }
-        }
-    };
-
-    private void animateVoice(final float maxPeak) {
-
-        buttonStart.animate().scaleX(1 + maxPeak).scaleY(1 + maxPeak).setDuration(10).start();
-        maxPeakValue=maxPeak*200;
-
-        /*int x = mediaRecorder.getMaxAmplitude();
-        visualizerView.addAmplitude(x); // update the VisualizeView
-        visualizerView.invalidate(); // refresh the VisualizerView*/
-    }
-
     private PullableSource mic() {
         return new PullableSource.Default(
                 new AudioRecordConfig.Default(
@@ -257,7 +247,8 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    @NonNull private File file() {
+    @NonNull
+    private File file() {
         return new File(Environment.getExternalStorageDirectory(), "sample.wav");
     }
 

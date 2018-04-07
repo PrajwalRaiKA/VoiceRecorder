@@ -29,19 +29,28 @@
         android:text="STOP" />
 
     <Button
-        android:id="@+id/button3"
+        android:id="@+id/button_pause_resume"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignTop="@+id/button2"
-        android:text="Play" />
+        android:layout_alignTop="@+id/button"
+        android:layout_centerHorizontal="true"
+        android:text="Pause" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/button2"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:text="Play Recording" />
 
     <Button
         android:id="@+id/button4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/button2"
+        android:layout_below="@+id/button3"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10dp"
         android:text="STOP PLAYING RECORDING " />
@@ -53,7 +62,7 @@
         android:layout_below="@+id/button4"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="20dp"
-        tools:text="20"/>
+        tools:text="20" />
 
 
 </RelativeLayout>
