@@ -128,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
                     SecurityException, IllegalStateException {
                 buttonStop.setEnabled(false);
                 buttonStart.setEnabled(false);
+                buttonPlayLastRecordAudio.setEnabled(false);
                 buttonStopPlayingRecording.setEnabled(true);
                 mediaPlayer = new MediaPlayer();
                 try {
