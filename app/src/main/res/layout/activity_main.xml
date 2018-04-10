@@ -4,19 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <test.voicerecorder.VisualizerView
-        android:id="@+id/visual_view"
+    <android.opengl.GLSurfaceView
+        android:id="@+id/gl_surface"
         android:layout_width="match_parent"
-        android:layout_height="160dp"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_height="200dp"
+        android:layout_gravity="center" />
 
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:layout_below="@+id/visual_view"
+        android:layout_below="@+id/gl_surface"
         android:layout_marginTop="37dp"
         android:text="Record" />
 

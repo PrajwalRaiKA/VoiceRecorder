@@ -4,6 +4,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -15,6 +16,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.yalantis.waves.util.Horizon;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +37,9 @@ public class MainActivity extends AppCompatActivity {
 
     Button buttonStart, buttonStop, buttonPlayLastRecordAudio,
             buttonStopPlayingRecording, pauseResumeButton;
-    VisualizerView visualizerView;
+    //    VisualizerView visualizerView;
+    private Horizon mHorizon;
+    private GLSurfaceView glSurfaceView;
     TextView amplitudeValue;
     String AudioSavePathInDevice = null;
     boolean isRecording = false;
@@ -47,15 +52,24 @@ public class MainActivity extends AppCompatActivity {
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
 
+
+    private static final int RECORDER_SAMPLE_RATE = 44100;
+    private static final int RECORDER_CHANNELS = 1;
+    private static final int RECORDER_ENCODING_BIT = 16;
+    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private static final int MAX_DECIBELS = 180;
+
     Recorder recorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        visualizerView = findViewById(R.id.visual_view);
-
+        glSurfaceView = findViewById(R.id.gl_surface);
+//        visualizerView = findViewById(R.id.visual_view);
+        mHorizon = new Horizon(glSurfaceView, getResources().getColor(R.color.background),
+                RECORDER_SAMPLE_RATE, RECORDER_CHANNELS, RECORDER_ENCODING_BIT);
+        mHorizon.setMaxVolumeDb(MAX_DECIBELS);
         buttonStart = (Button) findViewById(R.id.button);
         buttonStop = (Button) findViewById(R.id.button2);
         pauseResumeButton = findViewById(R.id.button_pause_resume);
@@ -82,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
                     pauseResumeButton.setEnabled(true);
                     buttonStop.setEnabled(true);
                     buttonStart.setEnabled(false);
-                    visualizerView.clear();
                     buttonPlayLastRecordAudio.setEnabled(false);
                     buttonStopPlayingRecording.setEnabled(false);
                 } else {
@@ -139,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
                     mediaPlayer.stop();
                     mediaPlayer.release();
                     setupRecorder();
-                    visualizerView.clear();
+
                 }
             }
         });
@@ -183,8 +196,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onAudioChunkPulled(AudioChunk audioChunk) {
                         float maxPeak = (float) audioChunk.maxAmplitude() * 200;
-                        visualizerView.addAmplitude(maxPeak);
-                        visualizerView.invalidate();
+                        mHorizon.updateView(audioChunk.toBytes());
                         amplitudeValue.setText("maxPeakValue:" + maxPeak);
                     }
                 }), file());
@@ -205,6 +217,18 @@ public class MainActivity extends AppCompatActivity {
     private void requestPermission() {
         ActivityCompat.requestPermissions(MainActivity.this, new
                 String[]{WRITE_EXTERNAL_STORAGE, RECORD_AUDIO}, RequestPermissionCode);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        glSurfaceView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        glSurfaceView.onPause();
     }
 
     @Override
@@ -242,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
         return new PullableSource.Default(
                 new AudioRecordConfig.Default(
                         MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
-                        AudioFormat.CHANNEL_IN_MONO, 44100
+                        AudioFormat.CHANNEL_IN_STEREO, 44100
                 )
         );
     }
@@ -250,6 +274,16 @@ public class MainActivity extends AppCompatActivity {
     @NonNull
     private File file() {
         return new File(Environment.getExternalStorageDirectory(), "sample.wav");
+    }
+
+    public void showVisualizer() {
+        Thread recordingThread = new Thread("recorder") {
+            @Override
+            public void run() {
+                super.run();
+
+            }
+        };
     }
 
 
