@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
+import developer.shivam.library.WaveView;
 import omrecorder.AudioChunk;
 import omrecorder.AudioRecordConfig;
 import omrecorder.OmRecorder;
@@ -38,8 +39,8 @@ public class MainActivity extends AppCompatActivity {
     Button buttonStart, buttonStop, buttonPlayLastRecordAudio,
             buttonStopPlayingRecording, pauseResumeButton;
     //    VisualizerView visualizerView;
-    private Horizon mHorizon;
-    private GLSurfaceView glSurfaceView;
+//    private Horizon mHorizon;
+//    private GLSurfaceView glSurfaceView;
     TextView amplitudeValue;
     String AudioSavePathInDevice = null;
     boolean isRecording = false;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
 
+    private WaveView mWaveView;
 
     private static final int RECORDER_SAMPLE_RATE = 44100;
     private static final int RECORDER_CHANNELS = 1;
@@ -65,11 +67,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        glSurfaceView = findViewById(R.id.gl_surface);
+//        glSurfaceView = findViewById(R.id.gl_surface);
 //        visualizerView = findViewById(R.id.visual_view);
-        mHorizon = new Horizon(glSurfaceView, getResources().getColor(R.color.background),
-                RECORDER_SAMPLE_RATE, RECORDER_CHANNELS, RECORDER_ENCODING_BIT);
-        mHorizon.setMaxVolumeDb(MAX_DECIBELS);
+//        mHorizon = new Horizon(glSurfaceView, getResources().getColor(R.color.background),
+//                RECORDER_SAMPLE_RATE, RECORDER_CHANNELS, RECORDER_ENCODING_BIT);
+
+        mWaveView = findViewById(R.id.sample_wave_view);
+
+
+//        mHorizon.setMaxVolumeDb(MAX_DECIBELS);
         buttonStart = (Button) findViewById(R.id.button);
         buttonStop = (Button) findViewById(R.id.button2);
         pauseResumeButton = findViewById(R.id.button_pause_resume);
@@ -196,8 +202,10 @@ public class MainActivity extends AppCompatActivity {
                 new PullTransport.Default(mic(), new PullTransport.OnAudioChunkPulledListener() {
                     @Override
                     public void onAudioChunkPulled(AudioChunk audioChunk) {
-                        float maxPeak = (float) audioChunk.maxAmplitude() * 200;
-                        mHorizon.updateView(audioChunk.toBytes());
+                        int maxPeak = (int) audioChunk.maxAmplitude();
+//                        mHorizon.updateView(audioChunk.toBytes());
+                        mWaveView.setSpeed(0.5f);
+                        mWaveView.setAmplitude(maxPeak > 70 ? maxPeak/20 : 0);
                         amplitudeValue.setText("maxPeakValue:" + maxPeak);
                     }
                 }), file());
@@ -223,13 +231,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        glSurfaceView.onResume();
+//        glSurfaceView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        glSurfaceView.onPause();
+//        glSurfaceView.onPause();
     }
 
     @Override
