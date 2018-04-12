@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
-import developer.shivam.library.WaveView;
 import omrecorder.AudioChunk;
 import omrecorder.AudioRecordConfig;
 import omrecorder.OmRecorder;
@@ -205,7 +204,11 @@ public class MainActivity extends AppCompatActivity {
                         int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
                         mWaveView.setSpeed(0.5f);
-                        mWaveView.setAmplitude(maxPeak > 70 ? maxPeak/20 : 0);
+                        if(maxPeak > 70) {
+                            mWaveView.setAmplitude(maxPeak / 20);
+                        } else{
+                            mWaveView.setAmplitude(0);
+                        }
                         amplitudeValue.setText("maxPeakValue:" + maxPeak);
                     }
                 }), file());
