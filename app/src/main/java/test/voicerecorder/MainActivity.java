@@ -1,5 +1,6 @@
 package test.voicerecorder;
 
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.MediaPlayer;
@@ -21,6 +22,9 @@ import com.yalantis.waves.util.Horizon;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Random;
 
 import omrecorder.AudioChunk;
@@ -35,6 +39,7 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String MY_PREFS_NAME = "SharedPref";
     Button buttonStart, buttonStop, buttonPlayLastRecordAudio,
             buttonStopPlayingRecording, pauseResumeButton;
     //    VisualizerView visualizerView;
@@ -113,17 +118,7 @@ public class MainActivity extends AppCompatActivity {
         buttonStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                try {
-                    isRecording = false;
-                    buttonStop.setEnabled(false);
-                    buttonStart.setEnabled(true);
-                    pauseResumeButton.setEnabled(false);
-                    recorder.stopRecording();
-                    setupRecorder();
-                    buttonPlayLastRecordAudio.setEnabled(true);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                onRecordingStop();
             }
         });
 
@@ -187,6 +182,20 @@ public class MainActivity extends AppCompatActivity {
         handler = new Handler();
     }
 
+    private void onRecordingStop() {
+        try {
+            isRecording = false;
+            buttonStop.setEnabled(false);
+            buttonStart.setEnabled(true);
+            pauseResumeButton.setEnabled(false);
+            recorder.stopRecording();
+            setupRecorder();
+            buttonPlayLastRecordAudio.setEnabled(true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void MediaRecorderReady() {
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -204,9 +213,9 @@ public class MainActivity extends AppCompatActivity {
                         int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
                         mWaveView.setSpeed(0.5f);
-                        if(maxPeak > 70) {
+                        if (maxPeak > 70) {
                             mWaveView.setAmplitude(maxPeak / 20);
-                        } else{
+                        } else {
                             mWaveView.setAmplitude(0);
                         }
                         amplitudeValue.setText("maxPeakValue:" + maxPeak);
@@ -285,7 +294,44 @@ public class MainActivity extends AppCompatActivity {
 
     @NonNull
     private File file() {
-        return new File(Environment.getExternalStorageDirectory(), "sample.wav");
+
+
+        File audioFolder = new File(Environment.getExternalStorageDirectory(),
+                "VoiceRecorder");
+        if (!audioFolder.exists()) {
+            boolean success = audioFolder.mkdir();
+            if (success) {
+                File file1 = new File(audioFolder, makeFileName());
+                if (!file1.exists()) {
+                    file1.mkdir();
+                }
+                return file1;
+            }
+        } else {
+            File file = new File(audioFolder, makeFileName());
+            if (!file.exists()) {
+                try {
+                    file.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return file;
+        }
+        return new File(Environment.getExternalStorageDirectory(), makeFileName());
+    }
+
+
+    private String makeFileName() {
+        SharedPreferences prefs = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE);
+        int count = prefs.getInt("count", 1);
+        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+        String fileName = "Recording" + count + "(" + date + ").wav";
+
+        SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
+        editor.putInt("count", ++count);
+        editor.apply();
+        return fileName;
     }
 
     public void showVisualizer() {
