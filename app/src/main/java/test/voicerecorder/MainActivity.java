@@ -5,10 +5,10 @@ import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -18,9 +18,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.yalantis.waves.util.Horizon;
-
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -42,14 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String MY_PREFS_NAME = "SharedPref";
     Button buttonStart, buttonStop, buttonPlayLastRecordAudio,
             buttonStopPlayingRecording, pauseResumeButton;
-    //    VisualizerView visualizerView;
-//    private Horizon mHorizon;
-//    private GLSurfaceView glSurfaceView;
-    TextView amplitudeValue;
-    String AudioSavePathInDevice = null;
+
+    TextView timer;
     boolean isRecording = false;
-    MediaRecorder mediaRecorder;
-    public static final int REPEAT_INTERVAL = 40;
     Random random;
     Handler handler;
     String RandomAudioFileName = "ABCDEFGHIJKLMNOP";
@@ -57,15 +51,17 @@ public class MainActivity extends AppCompatActivity {
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
 
-    private WaveView mWaveView;
-
-    private static final int RECORDER_SAMPLE_RATE = 44100;
-    private static final int RECORDER_CHANNELS = 1;
-    private static final int RECORDER_ENCODING_BIT = 16;
-    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int MAX_DECIBELS = 180;
+    private VisualizerView mWaveView;
 
     Recorder recorder;
+    private String lastFileName;
+    private int counter;
+
+    long timeInMilliseconds = 0L;
+    long timeSwapBuff = 0L;
+    long updatedTime = 0L;
+    long startTime = 0L;
+    private Handler customHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,14 +82,13 @@ public class MainActivity extends AppCompatActivity {
         buttonPlayLastRecordAudio = (Button) findViewById(R.id.button3);
         buttonStopPlayingRecording = (Button) findViewById(R.id.button4);
 
-        amplitudeValue = (TextView) findViewById(R.id.text_amplitude);
+        timer = (TextView) findViewById(R.id.tv_timer);
 
         buttonStop.setEnabled(true);
         buttonPlayLastRecordAudio.setEnabled(false);
         buttonStopPlayingRecording.setEnabled(false);
 
 
-        setupRecorder();
         random = new Random();
 
         buttonStart.setOnClickListener(new View.OnClickListener() {
@@ -101,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
 
                 if (checkPermission()) {
+                    setupRecorder();
+                    startTime = SystemClock.uptimeMillis();
+                    customHandler.postDelayed(updateTimerThread, 0);
                     recorder.startRecording();
                     isRecording = true;
                     pauseResumeButton.setEnabled(true);
@@ -132,7 +130,10 @@ public class MainActivity extends AppCompatActivity {
                 buttonStopPlayingRecording.setEnabled(true);
                 mediaPlayer = new MediaPlayer();
                 try {
-                    mediaPlayer.setDataSource(Environment.getExternalStorageDirectory().toString().trim() + "/sample.wav");
+                    File directory1 = new File(Environment.getExternalStorageDirectory(), "VoiceRecorder");
+                    File from1 = new File(directory1, lastFileName);
+                    FileInputStream is = new FileInputStream(from1);
+                    mediaPlayer.setDataSource(is.getFD());
                     mediaPlayer.prepare();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -152,8 +153,6 @@ public class MainActivity extends AppCompatActivity {
                 if (mediaPlayer != null) {
                     mediaPlayer.stop();
                     mediaPlayer.release();
-                    setupRecorder();
-
                 }
             }
         });
@@ -170,8 +169,19 @@ public class MainActivity extends AppCompatActivity {
                 if (!isPaused) {
                     pauseResumeButton.setText(getString(R.string.resume_recording));
                     recorder.pauseRecording();
+                    timeSwapBuff += timeInMilliseconds;
+                    customHandler.removeCallbacks(updateTimerThread);
+                    mWaveView.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mWaveView.addAmplitude(0);
+                            mWaveView.invalidate();
+                        }
+                    }, 500);
                     isRecording = false;
                 } else {
+                    startTime = SystemClock.uptimeMillis();
+                    customHandler.postDelayed(updateTimerThread, 0);
                     pauseResumeButton.setText(getString(R.string.pause_recording));
                     recorder.resumeRecording();
                     isRecording = true;
@@ -189,21 +199,28 @@ public class MainActivity extends AppCompatActivity {
             buttonStart.setEnabled(true);
             pauseResumeButton.setEnabled(false);
             recorder.stopRecording();
-            setupRecorder();
+            startTime = SystemClock.uptimeMillis();
+            timeSwapBuff = 0;
+            timeInMilliseconds = 0;
+            customHandler.removeCallbacks(updateTimerThread);
+            renameFile();
+            mWaveView.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mWaveView.addAmplitude(0);
+                    mWaveView.invalidate();
+                }
+            }, 500);
             buttonPlayLastRecordAudio.setEnabled(true);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void MediaRecorderReady() {
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
-        mediaRecorder.setOutputFile(AudioSavePathInDevice);
+    private void renameFile() {
+        CustomDialogClass cdd = new CustomDialogClass(MainActivity.this, lastFileName);
+        cdd.show();
     }
-
 
     private void setupRecorder() {
         recorder = OmRecorder.wav(
@@ -212,13 +229,9 @@ public class MainActivity extends AppCompatActivity {
                     public void onAudioChunkPulled(AudioChunk audioChunk) {
                         int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
-                        mWaveView.setSpeed(0.5f);
-                        if (maxPeak > 70) {
-                            mWaveView.setAmplitude(maxPeak / 20);
-                        } else {
-                            mWaveView.setAmplitude(0);
-                        }
-                        amplitudeValue.setText("maxPeakValue:" + maxPeak);
+                        mWaveView.addAmplitude(maxPeak);
+                        mWaveView.invalidate();
+
                     }
                 }), file());
     }
@@ -294,55 +307,49 @@ public class MainActivity extends AppCompatActivity {
 
     @NonNull
     private File file() {
-
-
         File audioFolder = new File(Environment.getExternalStorageDirectory(),
                 "VoiceRecorder");
         if (!audioFolder.exists()) {
             boolean success = audioFolder.mkdir();
             if (success) {
-                File file1 = new File(audioFolder, makeFileName());
-                if (!file1.exists()) {
-                    file1.mkdir();
-                }
-                return file1;
+                return new File(audioFolder, makeFileName());
             }
         } else {
-            File file = new File(audioFolder, makeFileName());
-            if (!file.exists()) {
-                try {
-                    file.createNewFile();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return file;
+            return new File(audioFolder, makeFileName());
         }
-        return new File(Environment.getExternalStorageDirectory(), makeFileName());
+        return new File(Environment.getExternalStorageDirectory(), "Sample.wav");
     }
 
 
     private String makeFileName() {
         SharedPreferences prefs = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE);
         int count = prefs.getInt("count", 1);
-        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+        String date = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
         String fileName = "Recording" + count + "(" + date + ").wav";
 
         SharedPreferences.Editor editor = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE).edit();
         editor.putInt("count", ++count);
         editor.apply();
+
+        lastFileName = fileName;
         return fileName;
     }
 
-    public void showVisualizer() {
-        Thread recordingThread = new Thread("recorder") {
-            @Override
-            public void run() {
-                super.run();
+    private Runnable updateTimerThread = new Runnable() {
+        public void run() {
+            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
+            updatedTime = timeSwapBuff + timeInMilliseconds;
+            int secs = (int) (updatedTime / 1000);
+            int mins = secs / 60;
+            secs = secs % 60;
+            int milliseconds = (int) (updatedTime % 1000);
+            timer.setText("" + mins + ":"
+                    + String.format("%02d", secs) + ":"
+                    + String.format("%03d", milliseconds));
+            customHandler.postDelayed(this, 0);
+        }
 
-            }
-        };
-    }
+    };
 
 
 }
