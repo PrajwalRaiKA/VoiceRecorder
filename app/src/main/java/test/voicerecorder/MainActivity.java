@@ -18,6 +18,11 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.cleveroad.audiovisualization.AudioVisualization;
+import com.cleveroad.audiovisualization.DbmHandler;
+import com.cleveroad.audiovisualization.SpeechRecognizerDbmHandler;
+import com.cleveroad.audiovisualization.VisualizerDbmHandler;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -50,8 +55,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int RequestPermissionCode = 1;
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
-
-    private VisualizerView mWaveView;
+    private CircleBarVisualizer mWaveView;
 
     Recorder recorder;
     private String lastFileName;
@@ -73,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
 //                RECORDER_SAMPLE_RATE, RECORDER_CHANNELS, RECORDER_ENCODING_BIT);
 
         mWaveView = findViewById(R.id.sample_wave_view);
-
 
 //        mHorizon.setMaxVolumeDb(MAX_DECIBELS);
         buttonStart = (Button) findViewById(R.id.button);
@@ -129,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
                 buttonPlayLastRecordAudio.setEnabled(false);
                 buttonStopPlayingRecording.setEnabled(true);
                 mediaPlayer = new MediaPlayer();
+                mWaveView.setPlayer(mediaPlayer.getAudioSessionId());
                 try {
                     File directory1 = new File(Environment.getExternalStorageDirectory(), "VoiceRecorder");
                     File from1 = new File(directory1, lastFileName);
@@ -171,13 +175,13 @@ public class MainActivity extends AppCompatActivity {
                     recorder.pauseRecording();
                     timeSwapBuff += timeInMilliseconds;
                     customHandler.removeCallbacks(updateTimerThread);
-                    mWaveView.postDelayed(new Runnable() {
+                   /* mWaveView.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             mWaveView.addAmplitude(0);
                             mWaveView.invalidate();
                         }
-                    }, 500);
+                    }, 500);*/
                     isRecording = false;
                 } else {
                     startTime = SystemClock.uptimeMillis();
@@ -204,13 +208,13 @@ public class MainActivity extends AppCompatActivity {
             timeInMilliseconds = 0;
             customHandler.removeCallbacks(updateTimerThread);
             renameFile();
-            mWaveView.postDelayed(new Runnable() {
+            /*mWaveView.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     mWaveView.addAmplitude(0);
                     mWaveView.invalidate();
                 }
-            }, 500);
+            }, 500);*/
             buttonPlayLastRecordAudio.setEnabled(true);
         } catch (IOException e) {
             e.printStackTrace();
@@ -229,23 +233,20 @@ public class MainActivity extends AppCompatActivity {
                     public void onAudioChunkPulled(AudioChunk audioChunk) {
                         int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
-                        mWaveView.addAmplitude(maxPeak);
+                        /*mWaveView.addAmplitude(maxPeak);
+                        mWaveView.invalidate();*/
+                        byte[] copyBytes = audioChunk.toBytes();
+                        byte[] sendBytes = new byte[1024];
+                        for (int i = 0; i < 1024; i++) {
+
+                            sendBytes[i] = copyBytes[i];
+                        }
+
+                        mWaveView.setAmplitude(maxPeak);
                         mWaveView.invalidate();
 
                     }
                 }), file());
-    }
-
-    public String CreateRandomAudioFileName(int string) {
-        StringBuilder stringBuilder = new StringBuilder(string);
-        int i = 0;
-        while (i < string) {
-            stringBuilder.append(RandomAudioFileName.
-                    charAt(random.nextInt(RandomAudioFileName.length())));
-
-            i++;
-        }
-        return stringBuilder.toString();
     }
 
     private void requestPermission() {
@@ -256,13 +257,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-//        glSurfaceView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-//        glSurfaceView.onPause();
     }
 
     @Override
@@ -320,6 +319,10 @@ public class MainActivity extends AppCompatActivity {
         return new File(Environment.getExternalStorageDirectory(), "Sample.wav");
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
 
     private String makeFileName() {
         SharedPreferences prefs = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE);
@@ -348,7 +351,6 @@ public class MainActivity extends AppCompatActivity {
                     + String.format("%03d", milliseconds));
             customHandler.postDelayed(this, 0);
         }
-
     };
 
 
