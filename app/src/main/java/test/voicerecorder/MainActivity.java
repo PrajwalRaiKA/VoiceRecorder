@@ -13,15 +13,11 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.cleveroad.audiovisualization.AudioVisualization;
-import com.cleveroad.audiovisualization.DbmHandler;
-import com.cleveroad.audiovisualization.SpeechRecognizerDbmHandler;
-import com.cleveroad.audiovisualization.VisualizerDbmHandler;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,6 +33,7 @@ import omrecorder.OmRecorder;
 import omrecorder.PullTransport;
 import omrecorder.PullableSource;
 import omrecorder.Recorder;
+import omrecorder.WriteAction;
 
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
@@ -56,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
     private CircleBarVisualizer mWaveView;
+    private String timerText;
 
     Recorder recorder;
     private String lastFileName;
@@ -86,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
         buttonStopPlayingRecording = (Button) findViewById(R.id.button4);
 
         timer = (TextView) findViewById(R.id.tv_timer);
+        timerText = "00:00:00";
 
         buttonStop.setEnabled(true);
         buttonPlayLastRecordAudio.setEnabled(false);
@@ -227,26 +226,48 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupRecorder() {
+//        recorder = OmRecorder.wav(
+//                new PullTransport.Default(mic(), new PullTransport.OnAudioChunkPulledListener() {
+//                    @Override
+//                    public void onAudioChunkPulled(AudioChunk audioChunk) {
+//                        int maxPeak = (int) audioChunk.maxAmplitude();
+////                        mHorizon.updateView(audioChunk.toBytes());
+//                        /*mWaveView.addAmplitude(maxPeak);
+//                        mWaveView.invalidate();*/
+//                        byte[] copyBytes = audioChunk.toBytes();
+//                        mWaveView.setBytes(copyBytes);
+//                        mWaveView.setTimeValue(timerText);
+////                        mWaveView.setAmplitude(maxPeak);
+//                        mWaveView.invalidate();
+//
+//                    }
+//                }), file());
+
         recorder = OmRecorder.wav(
-                new PullTransport.Default(mic(), new PullTransport.OnAudioChunkPulledListener() {
-                    @Override
-                    public void onAudioChunkPulled(AudioChunk audioChunk) {
-                        int maxPeak = (int) audioChunk.maxAmplitude();
+                new PullTransport.Noise(mic(),
+                        new PullTransport.OnAudioChunkPulledListener() {
+                            @Override public void onAudioChunkPulled(AudioChunk audioChunk) {
+                                int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
                         /*mWaveView.addAmplitude(maxPeak);
                         mWaveView.invalidate();*/
-                        byte[] copyBytes = audioChunk.toBytes();
-                        byte[] sendBytes = new byte[1024];
-                        for (int i = 0; i < 1024; i++) {
-
-                            sendBytes[i] = copyBytes[i];
-                        }
-
-                        mWaveView.setAmplitude(maxPeak);
-                        mWaveView.invalidate();
-
-                    }
-                }), file());
+                                byte[] copyBytes = audioChunk.toBytes();
+                                mWaveView.setBytes(copyBytes);
+                                mWaveView.setTimeValue(timerText);
+//                        mWaveView.setAmplitude(maxPeak);
+                                mWaveView.invalidate();
+                            }
+                        },
+                        new WriteAction.Default(),
+                        new Recorder.OnSilenceListener() {
+                            @Override public void onSilence(long silenceTime) {
+                                Log.e("silenceTime", String.valueOf(silenceTime));
+                                Toast.makeText(MainActivity.this, "silence of " + silenceTime + " detected",
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        }, 200
+                ), file()
+        );
     }
 
     private void requestPermission() {
@@ -304,6 +325,17 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    public PullableSource.NoiseSuppressor getMic(){
+        return new PullableSource.NoiseSuppressor(
+                new PullableSource.Default(
+                        new AudioRecordConfig.Default(
+                                MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
+                                AudioFormat.CHANNEL_IN_MONO, 44100
+                        )
+                )
+        );
+    }
+
     @NonNull
     private File file() {
         File audioFolder = new File(Environment.getExternalStorageDirectory(),
@@ -338,6 +370,7 @@ public class MainActivity extends AppCompatActivity {
         return fileName;
     }
 
+
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
             timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
@@ -346,12 +379,13 @@ public class MainActivity extends AppCompatActivity {
             int mins = secs / 60;
             secs = secs % 60;
             int milliseconds = (int) (updatedTime % 1000);
-            timer.setText("" + mins + ":"
-                    + String.format("%02d", secs) + ":"
-                    + String.format("%03d", milliseconds));
+            timerText = "" + mins + ":"
+                    + String.format("%02d", secs) /*+ ":"
+                    + String.format("%03d", milliseconds)*/;
             customHandler.postDelayed(this, 0);
         }
     };
+
 
 
 }
