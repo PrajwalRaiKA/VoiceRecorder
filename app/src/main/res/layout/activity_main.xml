@@ -11,10 +11,10 @@
     <!--android:layout_height="200dp"-->
     <!--android:layout_gravity="center" />-->
 
-    <test.voicerecorder.CircleBarVisualizer
+    <test.voicerecorder.VisualizerView
         android:id="@+id/sample_wave_view"
         android:layout_width="match_parent"
-        android:layout_height="200dp" />
+        android:layout_height="300dp" />
 
     <Button
         android:id="@+id/button"

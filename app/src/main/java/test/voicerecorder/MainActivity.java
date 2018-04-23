@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int RequestPermissionCode = 1;
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
-    private CircleBarVisualizer mWaveView;
+    private VisualizerView mWaveView;
     private String timerText;
 
     Recorder recorder;
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
                 buttonPlayLastRecordAudio.setEnabled(false);
                 buttonStopPlayingRecording.setEnabled(true);
                 mediaPlayer = new MediaPlayer();
-                mWaveView.setPlayer(mediaPlayer.getAudioSessionId());
+//                mWaveView.setPlayer(mediaPlayer.getAudioSessionId());
                 try {
                     File directory1 = new File(Environment.getExternalStorageDirectory(), "VoiceRecorder");
                     File from1 = new File(directory1, lastFileName);
@@ -246,21 +246,23 @@ public class MainActivity extends AppCompatActivity {
         recorder = OmRecorder.wav(
                 new PullTransport.Noise(mic(),
                         new PullTransport.OnAudioChunkPulledListener() {
-                            @Override public void onAudioChunkPulled(AudioChunk audioChunk) {
+                            @Override
+                            public void onAudioChunkPulled(AudioChunk audioChunk) {
                                 int maxPeak = (int) audioChunk.maxAmplitude();
 //                        mHorizon.updateView(audioChunk.toBytes());
                         /*mWaveView.addAmplitude(maxPeak);
                         mWaveView.invalidate();*/
-                                byte[] copyBytes = audioChunk.toBytes();
-                                mWaveView.setBytes(copyBytes);
-                                mWaveView.setTimeValue(timerText);
-//                        mWaveView.setAmplitude(maxPeak);
+//                                byte[] copyBytes = audioChunk.toBytes();
+//                                mWaveView.setBytes(copyBytes);
+//                                mWaveView.setTimeValue(timerText);
+                                mWaveView.setAmplitude(maxPeak);
                                 mWaveView.invalidate();
                             }
                         },
                         new WriteAction.Default(),
                         new Recorder.OnSilenceListener() {
-                            @Override public void onSilence(long silenceTime) {
+                            @Override
+                            public void onSilence(long silenceTime) {
                                 Log.e("silenceTime", String.valueOf(silenceTime));
                                 Toast.makeText(MainActivity.this, "silence of " + silenceTime + " detected",
                                         Toast.LENGTH_SHORT).show();
@@ -325,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    public PullableSource.NoiseSuppressor getMic(){
+    public PullableSource.NoiseSuppressor getMic() {
         return new PullableSource.NoiseSuppressor(
                 new PullableSource.Default(
                         new AudioRecordConfig.Default(
@@ -385,7 +387,6 @@ public class MainActivity extends AppCompatActivity {
             customHandler.postDelayed(this, 0);
         }
     };
-
 
 
 }
