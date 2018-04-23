@@ -11,7 +11,7 @@ import android.util.AttributeSet;
 import android.view.View;
 
 public class VisualizerView extends View {
-    private static final int LINE_WIDTH = 50; // width of visualizer lines
+    private static final int LINE_WIDTH = 5; // width of visualizer lines
     private static final int LINE_SCALE = 75; // scales visualizer lines
     private float amplitudes; // amplitudes for line lengths
     private int width; // width of this View
@@ -41,7 +41,7 @@ public class VisualizerView extends View {
     }
 
     // add the given amplitude to the amplitudes ArrayList
-    public void addAmplitude(float amplitude) {
+    public void setAmplitude(float amplitude) {
         amplitudes = amplitude; // add newest to the amplitudes ArrayList
 
         // if the power lines completely fill the VisualizerView
@@ -57,23 +57,35 @@ public class VisualizerView extends View {
         float curX = 0; // start curX at zero
 
         // for each item in the amplitudes ArrayList
-        for (int i = 1; i < 12; i++) {
-            float scaledHeight = amplitudes * (i * 0.5f); // scale the power
-            curX += LINE_WIDTH; // increase X by LINE_WIDTH
-
+        for (int i = 1; i < 37; i++) {
+            curX = curX + 10 + LINE_WIDTH; // increase X by LINE_WIDTH
+            float scaledHeight = amplitudes * 8 * (float) Math.sin(i * (0.031) + 0.174); // scale the power
             // draw a line representing this item in the amplitudes ArrayList
-            canvas.drawLine(curX, middle + scaledHeight / 2, curX, middle
-                    - scaledHeight / 2, linePaint);
+            if (i % 2 == 0)
+                canvas.drawLine(curX, middle + scaledHeight / 2, curX, middle
+                        , linePaint);
+            else {
+                canvas.drawLine(curX, middle, curX, middle
+                        - scaledHeight / 2, linePaint);
+            }
         }
 
-        for (int i =  10; i > 0; i--) {
-            float scaledHeight = amplitudes * (i * 0.5f); // scale the power
-            curX += LINE_WIDTH; // increase X by LINE_WIDTH
+        for (int i = 35; i > 0; i--) {
+            float scaledHeight = amplitudes * 8 * (float) Math.sin(i * (0.031) + 0.174); // scale the power
+            curX = curX + 10 + LINE_WIDTH; // increase X by LINE_WIDTH
 
             // draw a line representing this item in the amplitudes ArrayList
-            canvas.drawLine(curX, middle + scaledHeight / 2, curX, middle
-                    - scaledHeight / 2, linePaint);
+            if (i % 2 == 0)
+                canvas.drawLine(curX, middle + scaledHeight / 2, curX, middle
+                        , linePaint);
+            else {
+                canvas.drawLine(curX, middle, curX, middle
+                        - scaledHeight / 2, linePaint);
+            }
         }
     }
 
+    //(10*(3.14/180))
+    //(80/num of line)(3.14/180)
+    //
 }
