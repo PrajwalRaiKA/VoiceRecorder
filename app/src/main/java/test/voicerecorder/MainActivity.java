@@ -19,6 +19,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.firezenk.audiowaves.Visualizer;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -52,8 +54,10 @@ public class MainActivity extends AppCompatActivity {
     public static final int RequestPermissionCode = 1;
     MediaPlayer mediaPlayer;
     boolean isPaused = false;
-    private CircleBarVisualizer mWaveView;
+//    private CircleBarVisualizer mWaveView;
     private String timerText;
+
+//    Visualizer mVisualizer;
 
     Recorder recorder;
     private String lastFileName;
@@ -74,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
 //        mHorizon = new Horizon(glSurfaceView, getResources().getColor(R.color.background),
 //                RECORDER_SAMPLE_RATE, RECORDER_CHANNELS, RECORDER_ENCODING_BIT);
 
-        mWaveView = findViewById(R.id.sample_wave_view);
+//        mWaveView = findViewById(R.id.sample_wave_view);
 
 //        mHorizon.setMaxVolumeDb(MAX_DECIBELS);
         buttonStart = (Button) findViewById(R.id.button);
@@ -82,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
         pauseResumeButton = findViewById(R.id.button_pause_resume);
         buttonPlayLastRecordAudio = (Button) findViewById(R.id.button3);
         buttonStopPlayingRecording = (Button) findViewById(R.id.button4);
+
+//        mVisualizer = (Visualizer) findViewById(R.id.sample_wave_view) ;
 
         timer = (TextView) findViewById(R.id.tv_timer);
         timerText = "00:00:00";
@@ -108,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
                     buttonStart.setEnabled(false);
                     buttonPlayLastRecordAudio.setEnabled(false);
                     buttonStopPlayingRecording.setEnabled(false);
+                    ((Visualizer) findViewById(R.id.sample_wave_view)).startListening();
                 } else {
                     requestPermission();
                 }
@@ -131,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
                 buttonPlayLastRecordAudio.setEnabled(false);
                 buttonStopPlayingRecording.setEnabled(true);
                 mediaPlayer = new MediaPlayer();
-                mWaveView.setPlayer(mediaPlayer.getAudioSessionId());
+//                mWaveView.setPlayer(mediaPlayer.getAudioSessionId());
                 try {
                     File directory1 = new File(Environment.getExternalStorageDirectory(), "VoiceRecorder");
                     File from1 = new File(directory1, lastFileName);
@@ -153,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
                 buttonStart.setEnabled(true);
                 buttonStopPlayingRecording.setEnabled(false);
                 buttonPlayLastRecordAudio.setEnabled(true);
+                ((Visualizer) findViewById(R.id.sample_wave_view)).stopListening();
                 if (mediaPlayer != null) {
                     mediaPlayer.stop();
                     mediaPlayer.release();
@@ -172,6 +180,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!isPaused) {
                     pauseResumeButton.setText(getString(R.string.resume_recording));
                     recorder.pauseRecording();
+                    ((Visualizer) findViewById(R.id.sample_wave_view)).stopListening();
                     timeSwapBuff += timeInMilliseconds;
                     customHandler.removeCallbacks(updateTimerThread);
                    /* mWaveView.postDelayed(new Runnable() {
@@ -187,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
                     customHandler.postDelayed(updateTimerThread, 0);
                     pauseResumeButton.setText(getString(R.string.pause_recording));
                     recorder.resumeRecording();
+                    ((Visualizer) findViewById(R.id.sample_wave_view)).startListening();
                     isRecording = true;
                 }
                 isPaused = !isPaused;
@@ -252,10 +262,10 @@ public class MainActivity extends AppCompatActivity {
                         /*mWaveView.addAmplitude(maxPeak);
                         mWaveView.invalidate();*/
                                 byte[] copyBytes = audioChunk.toBytes();
-                                mWaveView.setBytes(copyBytes);
-                                mWaveView.setTimeValue(timerText);
-//                        mWaveView.setAmplitude(maxPeak);
-                                mWaveView.invalidate();
+//                                mWaveView.setBytes(copyBytes);
+//                                mWaveView.setTimeValue(timerText);
+////                        mWaveView.setAmplitude(maxPeak);
+//                                mWaveView.invalidate();
                             }
                         },
                         new WriteAction.Default(),
